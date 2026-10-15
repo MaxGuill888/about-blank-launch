@@ -1,2 +1,4 @@
 # about-blank
-new abou:blank tab website
+new about:blank tab website
+NOW AT:
+https://about-blank-dev.github.io/about-blank/
