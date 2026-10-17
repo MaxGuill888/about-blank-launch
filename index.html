@@ -460,6 +460,94 @@
     #msg-topbar span { cursor:pointer; color:var(--muted); display:flex; align-items:center; transition: color .2s, transform .2s; }
     #msg-topbar span:hover { color:var(--text); transform:scale(1.1); }
     #msg-frame { flex:1; width:100%; border:0; min-height:0; background:var(--bg); }
+  
+    /* ======= APPS (galerie d'apps HTML) ======= */
+    .apps-box { padding: 12px 20px; }
+    .apps-header { display: flex; justify-content: space-between; align-items: center; cursor: pointer; gap: 10px; }
+    .apps-header h2 { margin: 0; font-size: 14px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+    .apps-header-right { display: flex; align-items: center; gap: 10px; }
+    .apps-count { display: none; align-items: center; gap: 6px; font-size: 11px; color: var(--text); background: var(--item-bg); border: 1px solid var(--card-border); border-radius: 99px; padding: 1px 9px; }
+    .apps-count::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--success); }
+    #appsMenu { display: none; flex-direction: column; gap: 12px; margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--card-border); }
+    .apps-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 12px; }
+    .apps-empty { font-size: 12px; color: var(--muted); text-align: center; margin: 0; }
+    .app-tile {
+      position: relative; display: flex; flex-direction: column; align-items: center; gap: 7px;
+      padding: 14px 6px 18px; border-radius: 10px; background: var(--item-bg);
+      border: 1px solid var(--card-border); cursor: pointer; user-select: none;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+    .app-tile:hover { border-color: var(--accent); transform: translateY(-1px); }
+    .app-tile.add { border-style: dashed; color: var(--muted); }
+    .app-icon {
+      width: 46px; height: 46px; border-radius: 11px; overflow: hidden; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--input-bg); border: 1px solid var(--card-border);
+      font-weight: 700; font-size: 20px; color: var(--text);
+    }
+    .app-icon img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .app-icon.plus { font-weight: 400; font-size: 26px; color: var(--muted); border-style: dashed; background: transparent; }
+    .app-icon.sm { width: 40px; height: 40px; font-size: 18px; }
+    .app-icon.xs { width: 20px; height: 20px; border-radius: 5px; font-size: 11px; }
+    .app-name { font-size: 11.5px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .app-dot { position: absolute; bottom: 7px; left: 50%; transform: translateX(-50%); width: 6px; height: 6px; border-radius: 50%; background: var(--success); display: none; }
+    .app-tile.running .app-dot { display: block; }
+    .app-tile.bg .app-dot { animation: appPulse 1.6s ease-in-out infinite; }
+    @keyframes appPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+    .app-tile-menu {
+      position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; padding: 0; line-height: 1;
+      background: transparent; color: var(--muted); border: none; border-radius: 6px; font-size: 16px;
+      opacity: 0; transition: opacity 0.15s, background 0.15s;
+    }
+    .app-tile-menu:hover { background: var(--card-border); color: var(--text); filter: none; transform: none; }
+    .app-tile:hover .app-tile-menu { opacity: 1; }
+    @media (hover: none) { .app-tile-menu { opacity: 0.8; } }
+
+    /* Fenêtre d'une app */
+    .app-win { position: fixed; display: flex; flex-direction: column; background: var(--card); color: var(--text); border: 1px solid var(--card-border); z-index: 3000; }
+    .app-win.is-full { left: 0; top: 0; width: 100vw; height: 100vh; height: 100dvh; border: none; border-radius: 0; }
+    .app-win.is-window { border-radius: 12px; box-shadow: 0 12px 40px rgba(0,0,0,0.55); overflow: hidden; min-width: 320px; min-height: 220px; }
+    .app-win.is-min { visibility: hidden; pointer-events: none; }
+    .app-win-bar {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-shrink: 0;
+      height: 38px; padding: 0 6px 0 12px; background: var(--item-bg); border-bottom: 1px solid var(--card-border);
+      user-select: none; touch-action: none;
+    }
+    .app-win.is-window .app-win-bar { cursor: grab; }
+    .app-win-title { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 13px; font-weight: 600; }
+    .app-win-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .app-win-btns { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
+    .app-wb {
+      width: 34px; height: 28px; padding: 0; display: flex; align-items: center; justify-content: center;
+      background: transparent; color: var(--muted); border: none; border-radius: 6px;
+    }
+    .app-wb:hover { background: var(--card-border); color: var(--text); filter: none; transform: none; }
+    .app-wb.close:hover { background: var(--danger); color: #fff; }
+    .app-win-body { position: relative; flex: 1; min-height: 0; background: var(--card); }
+    .app-frame { width: 100%; height: 100%; border: 0; display: block; background: transparent; }
+    .app-win.is-window:not(.top) .app-win-body::after { content: ''; position: absolute; inset: 0; z-index: 5; }
+    body.app-interacting .app-frame { pointer-events: none; }
+    body.app-interacting { user-select: none; }
+    .app-rs { display: none; position: absolute; z-index: 6; touch-action: none; }
+    .app-win.is-window .app-rs { display: block; }
+    .app-rs.n { top: 0; left: 14px; right: 14px; height: 6px; cursor: ns-resize; }
+    .app-rs.s { bottom: 0; left: 14px; right: 14px; height: 6px; cursor: ns-resize; }
+    .app-rs.e { right: 0; top: 14px; bottom: 14px; width: 6px; cursor: ew-resize; }
+    .app-rs.w { left: 0; top: 14px; bottom: 14px; width: 6px; cursor: ew-resize; }
+    .app-rs.ne { top: 0; right: 0; width: 14px; height: 14px; cursor: nesw-resize; }
+    .app-rs.nw { top: 0; left: 0; width: 14px; height: 14px; cursor: nwse-resize; }
+    .app-rs.se { bottom: 0; right: 0; width: 14px; height: 14px; cursor: nwse-resize; }
+    .app-rs.sw { bottom: 0; left: 0; width: 14px; height: 14px; cursor: nesw-resize; }
+
+    /* Modale ajout / modification */
+    #modal-app input[type="text"] { flex: none; width: 100%; }
+    #modal-app .app-icon-row input[type="text"] { flex: 1; }
+    .app-file-row, .app-icon-row { display: flex; align-items: center; gap: 10px; }
+    .app-file-name { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+    .app-allow { display: flex; align-items: center; gap: 10px; font-size: 13px; cursor: pointer; }
+    .app-allow input { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; flex-shrink: 0; }
+    .app-error { display: none; color: var(--danger); font-size: 12px; }
+    .app-error.show { display: block; }
   </style>
 </head>
 <body>
@@ -628,6 +716,22 @@
       </div>
     </div>
 
+    <div class="box apps-box">
+      <div class="apps-header" id="appsBtn">
+        <h2 id="titleApps">App</h2>
+        <div class="apps-header-right">
+          <span class="apps-count" id="appsRunning"></span>
+          <svg class="notes-trigger" id="appsArrow" width="22" height="22" viewBox="0 0 24 24">
+            <path d="M7 10l5 5 5-5z"/>
+          </svg>
+        </div>
+      </div>
+      <div id="appsMenu">
+        <div class="apps-grid" id="appsGrid"></div>
+        <p class="apps-empty" id="appsEmpty"></p>
+      </div>
+    </div>
+
     <div class="box settings-box">
       <div class="settings-header" id="settingsBtn">
         <h2 id="titleSettings">Réglages</h2>
@@ -682,7 +786,18 @@
         aiWelcome: "Bonjour ! Comment puis-je t'aider ?", aiThinking: "Réflexion en cours...", aiTitle: "Assistant IA", aiOptGemini: "Gemini", aiOptGroq: "Groq",
         aiError: "Erreur API : Vérifie ta clé dans Google AI Studio.",
         labelBg: "Fond d'écran :", notesFull: "Écran rempli ! Impossible d'ajouter plus de notes.", newChat: "+ Nouveau Chat",
-        notesLimit: "Limite de 20 notes atteinte !", bgUploadBtn: "Choisir une image", bgClearBtn: "Retirer"
+        notesLimit: "Limite de 20 notes atteinte !", bgUploadBtn: "Choisir une image", bgClearBtn: "Retirer",
+        titleApps: "App", appAdd: "Ajouter", appModalAdd: "Ajouter une app", appModalEdit: "Modifier l'app",
+        appChooseFile: "Choisir un fichier HTML", appReplaceFile: "Remplacer le fichier", appNoFile: "Aucun fichier choisi",
+        appNamePh: "Nom (vide = nom du fichier)", appIconPh: "Lien de l'icône (vide = icône du fichier)",
+        appAllow: "Autoriser le stockage de l'app",
+        appAllowHint: "L'app pourra sauvegarder ses données, mais elle aura aussi accès aux données du site (chat, notes). À n'activer que pour une app de confiance.",
+        appCancel: "Annuler", appCreate: "Ajouter", appSaveBtn: "Enregistrer", appDelete: "Supprimer", appEdit: "Modifier",
+        appConfirmDelete: "Supprimer cette app ?", appErrFile: "Choisis un fichier HTML.", appErrType: "Ce fichier n'est pas un fichier HTML.",
+        appErrSize: "Fichier trop gros (25 Mo max).", appErrIcon: "Lien d'icône invalide.",
+        appErrStorage: "Impossible d'enregistrer : espace de stockage plein ou indisponible.",
+        appEmpty: "Aucune app. Ajoute un fichier HTML.", appMin: "Réduire", appToWindow: "Fenêtre", appToFull: "Plein écran",
+        appClose: "Fermer", appBackground: "En arrière-plan", appLoadErr: "Impossible d'ouvrir cette app."
       },
       en: {
         title: "about:blank", titleSettings: "Settings", labelTheme: "Theme:", labelLang: "Language:", optSystem: "System", optDark: "Dark", optLight: "Light",
@@ -697,7 +812,18 @@
         aiWelcome: "Hello! How can I help you?", aiThinking: "Thinking...", aiTitle: "AI Assistant", aiOptGemini: "Gemini", aiOptGroq: "Groq",
         aiError: "API Error: Check your key in Google AI Studio.",
         labelBg: "Wallpaper:", notesFull: "Screen full! Cannot add more notes.", newChat: "+ New Chat",
-        notesLimit: "Limit of 20 notes reached!", bgUploadBtn: "Choose an image", bgClearBtn: "Remove"
+        notesLimit: "Limit of 20 notes reached!", bgUploadBtn: "Choose an image", bgClearBtn: "Remove",
+        titleApps: "Apps", appAdd: "Add", appModalAdd: "Add an app", appModalEdit: "Edit app",
+        appChooseFile: "Choose an HTML file", appReplaceFile: "Replace file", appNoFile: "No file chosen",
+        appNamePh: "Name (empty = file name)", appIconPh: "Icon link (empty = file's icon)",
+        appAllow: "Allow app storage",
+        appAllowHint: "The app will be able to save its data, but it will also have access to the site's data (chat, notes). Only enable for an app you trust.",
+        appCancel: "Cancel", appCreate: "Add", appSaveBtn: "Save", appDelete: "Delete", appEdit: "Edit",
+        appConfirmDelete: "Delete this app?", appErrFile: "Choose an HTML file.", appErrType: "This is not an HTML file.",
+        appErrSize: "File too large (25 MB max).", appErrIcon: "Invalid icon link.",
+        appErrStorage: "Could not save: storage is full or unavailable.",
+        appEmpty: "No apps yet. Add an HTML file.", appMin: "Minimize", appToWindow: "Window", appToFull: "Full screen",
+        appClose: "Close", appBackground: "In background", appLoadErr: "Could not open this app."
       }
     };
 
@@ -1061,6 +1187,7 @@
       document.getElementById('ai-input').placeholder = t.aiPlaceholder;
       const welcomeMsg = document.getElementById('ai-welcome');
       if (welcomeMsg) welcomeMsg.innerText = t.aiWelcome;
+      if (typeof applyAppsLang === 'function') applyAppsLang();
       init();
     }
 
@@ -1266,7 +1393,7 @@
     };
 
     document.getElementById('clearAll').onclick = () => {
-      if(confirm(translations[getStore('app_lang', '"fr"')].confirmReset)) { localStorage.clear(); location.reload(); }
+      if(confirm(translations[getStore('app_lang', '"fr"')].confirmReset)) { localStorage.clear(); (typeof wipeAppsData === 'function' ? wipeAppsData() : Promise.resolve()).then(() => location.reload()); }
     };
 
     const savedTheme = getStore('app_theme', '"system"');
@@ -1634,6 +1761,490 @@ Réponds toujours en français sauf si l'utilisateur écrit en anglais.`;
     }
 
     appInit();
+  </script>
+  <div id="appsRoot"></div>
+
+  <div class="modal-overlay" id="modal-app">
+    <div class="modal-box">
+      <h3 id="appModalTitle"></h3>
+      <input type="file" id="appFile" accept=".html,.htm,text/html" style="display:none;">
+      <div class="app-file-row">
+        <button class="ghost" id="appFileBtn" type="button" style="flex-shrink:0;"></button>
+        <span class="app-file-name" id="appFileName"></span>
+      </div>
+      <input type="text" id="appName" autocomplete="off" spellcheck="false">
+      <div class="app-icon-row">
+        <div class="app-icon sm" id="appIconPreview"></div>
+        <input type="text" id="appIconUrl" autocomplete="off" spellcheck="false">
+      </div>
+      <label class="app-allow"><input type="checkbox" id="appAllowStorage"><span id="appAllowLabel"></span></label>
+      <p id="appAllowHint"></p>
+      <div class="app-error" id="appError"></div>
+      <div class="modal-actions">
+        <button class="btn-danger" id="appDelete" type="button" style="width:auto;margin:0 auto 0 0;"></button>
+        <button class="ghost" id="appCancel" type="button"></button>
+        <button id="appSave" type="button"></button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (function () {
+    'use strict';
+    // ==================== APPS : galerie de fichiers HTML ====================
+    // Métadonnées (nom, icône, options) -> localStorage ; contenu des fichiers -> IndexedDB
+    const META_KEY = 'ab_apps_meta', DB_NAME = 'ab_apps', DB_STORE = 'files';
+    const MAX_SIZE = 25 * 1024 * 1024, ICON_MAX = 20000, MINW = 320, MINH = 220;
+    const $ = id => document.getElementById(id);
+    const curLang = () => { try { const l = getStore('app_lang', '"fr"'); return translations[l] ? l : 'fr'; } catch (e) { return 'fr'; } };
+    const T = () => translations[curLang()];
+    const uid = () => (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : ('a' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8));
+
+    // ---------- métadonnées ----------
+    function loadMeta() { try { const a = JSON.parse(localStorage.getItem(META_KEY) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+    function saveMeta(list) { try { localStorage.setItem(META_KEY, JSON.stringify(list)); return true; } catch (e) { return false; } }
+    let apps = loadMeta();
+
+    // ---------- IndexedDB ----------
+    let dbp = null, dbInst = null;
+    function openDb() {
+      if (dbp) return dbp;
+      dbp = new Promise((res, rej) => {
+        const r = indexedDB.open(DB_NAME, 1);
+        r.onupgradeneeded = () => { r.result.createObjectStore(DB_STORE, { keyPath: 'id' }); };
+        r.onsuccess = () => { dbInst = r.result; dbInst.onversionchange = () => { try { dbInst.close(); } catch (e) {} dbInst = null; dbp = null; }; res(dbInst); };
+        r.onerror = () => rej(r.error || new Error('IndexedDB'));
+        r.onblocked = () => rej(new Error('IndexedDB bloquée'));
+      });
+      dbp.catch(() => { dbp = null; });
+      return dbp;
+    }
+    async function dbTx(mode, fn) {
+      const db = await openDb();
+      return new Promise((res, rej) => {
+        const t = db.transaction(DB_STORE, mode);
+        let out;
+        const req = fn(t.objectStore(DB_STORE));
+        if (req) req.onsuccess = () => { out = req.result; };
+        t.oncomplete = () => res(out);
+        t.onerror = () => rej(t.error);
+        t.onabort = () => rej(t.error || new Error('abort'));
+      });
+    }
+    const dbPut = (id, html) => dbTx('readwrite', st => st.put({ id, html }));
+    const dbGet = id => dbTx('readonly', st => st.get(id));
+    const dbDel = id => dbTx('readwrite', st => st.delete(id));
+
+    // Utilisé par « Tout réinitialiser » : ferme la connexion puis supprime la base
+    function wipeAppsData() {
+      return new Promise(resolve => {
+        try {
+          if (dbInst) { try { dbInst.close(); } catch (e) {} dbInst = null; }
+          dbp = null;
+          const r = indexedDB.deleteDatabase(DB_NAME);
+          r.onsuccess = r.onerror = () => resolve();
+          setTimeout(resolve, 1500);
+        } catch (e) { resolve(); }
+      });
+    }
+
+    // ---------- nom / icône ----------
+    const dispName = a => ((a.name || '').trim() || a.base || 'App');
+    const dispIcon = a => ((a.iconUrl || '').trim() || a.autoIcon || '');
+
+    function normIcon(raw) {
+      raw = (raw || '').trim();
+      if (!raw) return '';
+      if (/^data:image\//i.test(raw) || /^https?:\/\//i.test(raw)) return raw;
+      if (/^\/\//.test(raw)) return 'https:' + raw;
+      if (/^[^\s\/]+\.[^\s]+$/.test(raw) && !/^[a-z][a-z0-9+.-]*:/i.test(raw)) return 'https://' + raw;
+      return null; // invalide
+    }
+
+    // Icône déclarée dans le fichier HTML (<link rel="icon">), si exploitable
+    function extractIcon(html) {
+      try {
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        const links = Array.from(doc.querySelectorAll('link[rel]')).filter(l => /(^|\s)icon(\s|$)|apple-touch-icon/i.test(l.getAttribute('rel') || ''));
+        links.sort((a, b) => (/apple/i.test(a.getAttribute('rel')) ? 1 : 0) - (/apple/i.test(b.getAttribute('rel')) ? 1 : 0));
+        for (const l of links) {
+          const h = (l.getAttribute('href') || '').trim();
+          if (!h) continue;
+          if (/^https?:\/\//i.test(h)) return h;
+          if (h.startsWith('//')) return 'https:' + h;
+          if (/^data:image\//i.test(h) && h.length <= ICON_MAX) return h;
+        }
+      } catch (e) {}
+      return '';
+    }
+
+    function fillIcon(box, a) {
+      box.textContent = '';
+      box.classList.remove('letter');
+      const url = dispIcon(a);
+      const letter = () => { box.textContent = (dispName(a)[0] || '?').toUpperCase(); box.classList.add('letter'); };
+      if (url) {
+        const img = document.createElement('img');
+        img.alt = ''; img.referrerPolicy = 'no-referrer';
+        img.onerror = () => { img.remove(); letter(); };
+        img.src = url;
+        box.appendChild(img);
+      } else letter();
+    }
+    function iconEl(a, cls) { const b = document.createElement('div'); b.className = cls; fillIcon(b, a); return b; }
+
+    // ---------- galerie ----------
+    const running = {}; // id -> { el, iframe, mode: 'full'|'window'|'min', prev, blobUrl }
+    const launching = new Set();
+    let zTop = 3000;
+
+    function renderApps() {
+      const grid = $('appsGrid'); if (!grid) return;
+      const t = T();
+      grid.innerHTML = '';
+      apps.forEach(a => {
+        const r = running[a.id];
+        const tile = document.createElement('div');
+        tile.className = 'app-tile' + (r ? ' running' : '') + (r && r.mode === 'min' ? ' bg' : '');
+        tile.title = dispName(a) + (r && r.mode === 'min' ? ' — ' + t.appBackground : '');
+        const menu = document.createElement('button');
+        menu.className = 'app-tile-menu'; menu.type = 'button'; menu.textContent = '⋯'; menu.title = t.appEdit;
+        menu.onclick = e => { e.stopPropagation(); openAppModal(a.id); };
+        tile.appendChild(menu);
+        tile.appendChild(iconEl(a, 'app-icon'));
+        const nm = document.createElement('div'); nm.className = 'app-name'; nm.textContent = dispName(a);
+        tile.appendChild(nm);
+        const dot = document.createElement('div'); dot.className = 'app-dot';
+        tile.appendChild(dot);
+        tile.onclick = () => launchApp(a.id);
+        grid.appendChild(tile);
+      });
+      const add = document.createElement('div');
+      add.className = 'app-tile add'; add.title = t.appAdd;
+      const plus = document.createElement('div'); plus.className = 'app-icon plus'; plus.textContent = '+';
+      const nm = document.createElement('div'); nm.className = 'app-name'; nm.textContent = t.appAdd;
+      add.appendChild(plus); add.appendChild(nm);
+      add.onclick = () => openAppModal(null);
+      grid.appendChild(add);
+      $('appsEmpty').style.display = apps.length ? 'none' : 'block';
+      const n = Object.keys(running).length, c = $('appsRunning');
+      c.style.display = n ? 'inline-flex' : 'none'; c.textContent = n;
+    }
+
+    $('appsBtn').onclick = () => {
+      const menu = $('appsMenu');
+      const visible = menu.style.display === 'flex';
+      menu.style.display = visible ? 'none' : 'flex';
+      $('appsArrow').classList.toggle('active', !visible);
+    };
+
+    // ---------- fenêtres ----------
+    const ICONS = {
+      min: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 12h14"/></svg>',
+      square: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><rect x="5" y="5" width="14" height="14" rx="1.5"/></svg>',
+      full: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9V5h4M19 9V5h-4M5 15v4h4M19 15v4h-4"/></svg>',
+      close: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>'
+    };
+    const vw = () => window.innerWidth, vh = () => window.innerHeight;
+    const effMode = r => (r.mode === 'min' ? (r.prev || 'full') : r.mode);
+
+    function clampGeom(g) {
+      const W = vw(), H = vh();
+      const w = Math.max(Math.min(g.w, W), Math.min(MINW, W));
+      const h = Math.max(Math.min(g.h, H), Math.min(MINH, H));
+      return { x: Math.min(Math.max(g.x, 0), W - w), y: Math.min(Math.max(g.y, 0), H - h), w, h };
+    }
+    function setGeom(el, g) { el.style.left = g.x + 'px'; el.style.top = g.y + 'px'; el.style.width = g.w + 'px'; el.style.height = g.h + 'px'; }
+    function styleGeom(el) { return { x: parseFloat(el.style.left) || 0, y: parseFloat(el.style.top) || 0, w: parseFloat(el.style.width) || MINW, h: parseFloat(el.style.height) || MINH }; }
+    function defaultGeom() {
+      const W = vw(), H = vh();
+      const w = Math.min(900, Math.round(W * 0.72)), h = Math.min(640, Math.round(H * 0.72));
+      const off = (Object.keys(running).length % 6) * 26;
+      return clampGeom({ x: Math.round((W - w) / 2) + off, y: Math.round((H - h) / 2) + off, w, h });
+    }
+    function saveGeom(id, g) {
+      const a = apps.find(x => x.id === id); if (!a) return;
+      a.win = { x: Math.round(g.x), y: Math.round(g.y), w: Math.round(g.w), h: Math.round(g.h) };
+      saveMeta(apps);
+    }
+
+    function updateTop() {
+      let best = null, bz = -1;
+      Object.values(running).forEach(r => { if (r.mode !== 'min') { const z = parseInt(r.el.style.zIndex || '0', 10); if (z > bz) { bz = z; best = r; } } });
+      Object.values(running).forEach(r => r.el.classList.toggle('top', r === best));
+    }
+    function focusApp(id) {
+      const r = running[id]; if (!r) return;
+      if (zTop > 8500) { zTop = 3000; Object.values(running).forEach(x => { x.el.style.zIndex = ++zTop; }); }
+      r.el.style.zIndex = ++zTop;
+      updateTop();
+    }
+    function updateBodyLock() {
+      const full = Object.values(running).some(r => r.mode === 'full');
+      document.body.style.overflow = full ? 'hidden' : '';
+    }
+    function labelWin(r) {
+      const t = T();
+      const q = s => r.el.querySelector('[data-act="' + s + '"]');
+      q('min').title = t.appMin;
+      q('close').title = t.appClose;
+      const sz = q('size');
+      sz.innerHTML = effMode(r) === 'window' ? ICONS.full : ICONS.square;
+      sz.title = effMode(r) === 'window' ? t.appToFull : t.appToWindow;
+    }
+    function refreshWinHeader(id) {
+      const r = running[id], a = apps.find(x => x.id === id); if (!r || !a) return;
+      const title = r.el.querySelector('.app-win-title');
+      title.textContent = '';
+      title.appendChild(iconEl(a, 'app-icon xs'));
+      const nm = document.createElement('span'); nm.className = 'app-win-name'; nm.textContent = dispName(a);
+      title.appendChild(nm);
+      r.iframe.title = dispName(a);
+    }
+
+    function setMode(id, mode) {
+      const r = running[id], a = apps.find(x => x.id === id); if (!r || !a) return;
+      if (mode === 'min') { if (r.mode !== 'min') r.prev = r.mode; } else { r.prev = mode; }
+      r.mode = mode;
+      const eff = effMode(r);
+      r.el.classList.toggle('is-full', eff === 'full');
+      r.el.classList.toggle('is-window', eff === 'window');
+      r.el.classList.toggle('is-min', mode === 'min');
+      if (eff === 'window') setGeom(r.el, clampGeom(a.win || defaultGeom()));
+      else { r.el.style.left = r.el.style.top = r.el.style.width = r.el.style.height = ''; }
+      labelWin(r);
+      updateBodyLock();
+      if (mode !== 'min') focusApp(id); else updateTop();
+      renderApps();
+    }
+
+    function closeApp(id) {
+      const r = running[id]; if (!r) return;
+      try { r.iframe.src = 'about:blank'; } catch (e) {}
+      r.el.remove();
+      try { URL.revokeObjectURL(r.blobUrl); } catch (e) {}
+      delete running[id];
+      updateBodyLock(); updateTop(); renderApps();
+    }
+
+    function sandboxFor(a) {
+      let s = 'allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals allow-pointer-lock allow-downloads allow-orientation-lock allow-presentation';
+      if (a.allowStorage) s += ' allow-same-origin';
+      return s;
+    }
+
+    function buildWindow(a) {
+      const el = document.createElement('div');
+      el.className = 'app-win is-full';
+      el.dataset.id = a.id;
+      el.innerHTML =
+        '<div class="app-win-bar"><div class="app-win-title"></div><div class="app-win-btns">' +
+        '<button class="app-wb" data-act="min" type="button">' + ICONS.min + '</button>' +
+        '<button class="app-wb" data-act="size" type="button">' + ICONS.square + '</button>' +
+        '<button class="app-wb close" data-act="close" type="button">' + ICONS.close + '</button>' +
+        '</div></div>' +
+        '<div class="app-win-body"><iframe class="app-frame"></iframe></div>' +
+        ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'].map(d => '<div class="app-rs ' + d + '" data-dir="' + d + '"></div>').join('');
+      return el;
+    }
+
+    function wireWindow(id, r) {
+      const el = r.el, bar = el.querySelector('.app-win-bar');
+      el.querySelector('[data-act="min"]').onclick = () => setMode(id, 'min');
+      el.querySelector('[data-act="size"]').onclick = () => setMode(id, effMode(r) === 'full' ? 'window' : 'full');
+      el.querySelector('[data-act="close"]').onclick = () => closeApp(id);
+      el.addEventListener('pointerdown', () => { if (running[id] && r.mode !== 'min') focusApp(id); }, true);
+      bar.addEventListener('dblclick', e => { if (e.target.closest('.app-wb')) return; setMode(id, effMode(r) === 'full' ? 'window' : 'full'); });
+
+      // Déplacement (mode fenêtre)
+      bar.addEventListener('pointerdown', e => {
+        if (e.target.closest('.app-wb') || r.mode !== 'window') return;
+        e.preventDefault();
+        const g0 = styleGeom(el), sx = e.clientX, sy = e.clientY;
+        document.body.classList.add('app-interacting');
+        try { bar.setPointerCapture(e.pointerId); } catch (err) {}
+        const move = ev => setGeom(el, clampGeom({ x: g0.x + ev.clientX - sx, y: g0.y + ev.clientY - sy, w: g0.w, h: g0.h }));
+        const up = () => {
+          bar.removeEventListener('pointermove', move); bar.removeEventListener('pointerup', up); bar.removeEventListener('pointercancel', up);
+          document.body.classList.remove('app-interacting');
+          saveGeom(id, styleGeom(el));
+        };
+        bar.addEventListener('pointermove', move); bar.addEventListener('pointerup', up); bar.addEventListener('pointercancel', up);
+      });
+
+      // Redimensionnement (poignées)
+      el.querySelectorAll('.app-rs').forEach(h => {
+        h.addEventListener('pointerdown', e => {
+          if (r.mode !== 'window') return;
+          e.preventDefault(); e.stopPropagation();
+          const dir = h.dataset.dir, g0 = styleGeom(el), sx = e.clientX, sy = e.clientY, W = vw(), H = vh();
+          document.body.classList.add('app-interacting');
+          try { h.setPointerCapture(e.pointerId); } catch (err) {}
+          const move = ev => {
+            const dx = ev.clientX - sx, dy = ev.clientY - sy;
+            let left = g0.x, top = g0.y, right = g0.x + g0.w, bottom = g0.y + g0.h;
+            if (dir.includes('e')) right += dx;
+            if (dir.includes('w')) left += dx;
+            if (dir.includes('s')) bottom += dy;
+            if (dir.includes('n')) top += dy;
+            left = Math.max(0, left); top = Math.max(0, top); right = Math.min(W, right); bottom = Math.min(H, bottom);
+            if (right - left < MINW) { if (dir.includes('w')) left = right - MINW; else right = left + MINW; }
+            if (bottom - top < MINH) { if (dir.includes('n')) top = bottom - MINH; else bottom = top + MINH; }
+            if (right > W) { right = W; left = right - MINW; }
+            if (bottom > H) { bottom = H; top = bottom - MINH; }
+            setGeom(el, { x: left, y: top, w: right - left, h: bottom - top });
+          };
+          const up = () => {
+            h.removeEventListener('pointermove', move); h.removeEventListener('pointerup', up); h.removeEventListener('pointercancel', up);
+            document.body.classList.remove('app-interacting');
+            saveGeom(id, styleGeom(el));
+          };
+          h.addEventListener('pointermove', move); h.addEventListener('pointerup', up); h.addEventListener('pointercancel', up);
+        });
+      });
+    }
+
+    async function launchApp(id) {
+      const a = apps.find(x => x.id === id); if (!a) return;
+      const r0 = running[id];
+      if (r0) { if (r0.mode === 'min') setMode(id, r0.prev || 'full'); else focusApp(id); return; }
+      if (launching.has(id)) return;
+      launching.add(id);
+      try {
+        const rec = await dbGet(id);
+        if (!rec || typeof rec.html !== 'string') { alert(T().appLoadErr); return; }
+        const blobUrl = URL.createObjectURL(new Blob([rec.html], { type: 'text/html' }));
+        const el = buildWindow(a);
+        const iframe = el.querySelector('iframe');
+        iframe.setAttribute('sandbox', sandboxFor(a));
+        iframe.setAttribute('allow', 'autoplay; fullscreen; clipboard-write; gamepad');
+        const r = { el, iframe, mode: 'full', prev: 'full', blobUrl };
+        running[id] = r;
+        $('appsRoot').appendChild(el);
+        refreshWinHeader(id);
+        wireWindow(id, r);
+        iframe.src = blobUrl;
+        setMode(id, 'full');
+      } catch (e) {
+        alert(T().appLoadErr);
+      } finally { launching.delete(id); }
+    }
+
+    window.addEventListener('resize', () => {
+      Object.values(running).forEach(r => { if (effMode(r) === 'window') setGeom(r.el, clampGeom(styleGeom(r.el))); });
+    });
+
+    // ---------- modale ajout / modification ----------
+    let editingId = null, pending = null;
+    function setErr(msg) { const e = $('appError'); e.textContent = msg || ''; e.classList.toggle('show', !!msg); }
+    function updatePreview() {
+      const a = editingId ? apps.find(x => x.id === editingId) : null;
+      const n = normIcon($('appIconUrl').value);
+      fillIcon($('appIconPreview'), {
+        name: $('appName').value,
+        base: pending ? pending.base : (a ? a.base : ''),
+        iconUrl: n || '',
+        autoIcon: pending ? pending.autoIcon : (a ? a.autoIcon : '')
+      });
+    }
+    function openAppModal(id) {
+      editingId = id; pending = null; setErr('');
+      const a = id ? apps.find(x => x.id === id) : null, t = T();
+      $('appModalTitle').textContent = a ? t.appModalEdit : t.appModalAdd;
+      $('appFile').value = '';
+      $('appFileBtn').textContent = a ? t.appReplaceFile : t.appChooseFile;
+      $('appFileName').textContent = a ? (a.file || a.base) : t.appNoFile;
+      $('appName').value = a ? (a.name || '') : '';
+      $('appName').placeholder = a ? a.base : t.appNamePh;
+      $('appIconUrl').value = a ? (a.iconUrl || '') : '';
+      $('appAllowStorage').checked = !!(a && a.allowStorage);
+      $('appDelete').style.display = a ? '' : 'none';
+      $('appSave').textContent = a ? t.appSaveBtn : t.appCreate;
+      $('appSave').disabled = false;
+      updatePreview();
+      $('modal-app').classList.add('open');
+    }
+    function closeAppModal() { $('modal-app').classList.remove('open'); }
+
+    $('appFileBtn').onclick = () => $('appFile').click();
+    $('appFile').onchange = async e => {
+      const f = e.target.files && e.target.files[0]; if (!f) return;
+      setErr('');
+      const t = T();
+      if (!/\.(html?|xhtml)$/i.test(f.name) && f.type !== 'text/html') { setErr(t.appErrType); e.target.value = ''; return; }
+      if (f.size > MAX_SIZE) { setErr(t.appErrSize); e.target.value = ''; return; }
+      let html;
+      try { html = await f.text(); } catch (err) { setErr(t.appErrType); return; }
+      if (!html || !html.trim()) { setErr(t.appErrType); return; }
+      const base = f.name.replace(/\.(html?|xhtml)$/i, '') || 'App';
+      pending = { html, file: f.name, base, autoIcon: extractIcon(html), size: f.size };
+      $('appFileName').textContent = f.name;
+      $('appName').placeholder = base;
+      updatePreview();
+    };
+    $('appName').addEventListener('input', updatePreview);
+    $('appIconUrl').addEventListener('input', updatePreview);
+    $('appCancel').onclick = closeAppModal;
+    $('modal-app').addEventListener('click', e => { if (e.target === $('modal-app')) closeAppModal(); });
+
+    $('appSave').onclick = async () => {
+      setErr('');
+      const t = T(), a = editingId ? apps.find(x => x.id === editingId) : null;
+      if (!a && !pending) { setErr(t.appErrFile); return; }
+      const iconRaw = $('appIconUrl').value.trim();
+      let iconUrl = '';
+      if (iconRaw) { const n = normIcon(iconRaw); if (!n) { setErr(t.appErrIcon); return; } iconUrl = n; }
+      const rec = a ? Object.assign({}, a) : { id: uid(), addedAt: Date.now() };
+      rec.name = $('appName').value.trim();
+      rec.iconUrl = iconUrl;
+      rec.allowStorage = $('appAllowStorage').checked;
+      if (pending) { rec.file = pending.file; rec.base = pending.base; rec.autoIcon = pending.autoIcon; rec.size = pending.size; }
+      const htmlChanged = !!pending;
+      $('appSave').disabled = true;
+      try {
+        if (pending) await dbPut(rec.id, pending.html);
+        const next = a ? apps.map(x => x.id === rec.id ? rec : x) : apps.concat([rec]);
+        if (!saveMeta(next)) { if (!a) await dbDel(rec.id).catch(() => {}); throw new Error('meta'); }
+        apps = next;
+      } catch (err) { setErr(t.appErrStorage); $('appSave').disabled = false; return; }
+      $('appSave').disabled = false;
+      if (running[rec.id]) {
+        if (htmlChanged || !!a.allowStorage !== rec.allowStorage) closeApp(rec.id); else refreshWinHeader(rec.id);
+      }
+      closeAppModal();
+      renderApps();
+    };
+
+    $('appDelete').onclick = async () => {
+      if (!editingId) return;
+      if (!confirm(T().appConfirmDelete)) return;
+      const id = editingId;
+      closeApp(id);
+      try { await dbDel(id); } catch (e) {}
+      apps = apps.filter(x => x.id !== id);
+      saveMeta(apps);
+      closeAppModal();
+      renderApps();
+    };
+
+    // ---------- langue ----------
+    function applyAppsLang() {
+      const t = T();
+      $('titleApps').textContent = t.titleApps;
+      $('appIconUrl').placeholder = t.appIconPh;
+      $('appAllowLabel').textContent = t.appAllow;
+      $('appAllowHint').textContent = t.appAllowHint;
+      $('appCancel').textContent = t.appCancel;
+      $('appDelete').textContent = t.appDelete;
+      $('appsEmpty').textContent = t.appEmpty;
+      Object.values(running).forEach(labelWin);
+      renderApps();
+    }
+
+    window.applyAppsLang = applyAppsLang;
+    window.wipeAppsData = wipeAppsData;
+    applyAppsLang();
+  })();
   </script>
 </body>
 </html>
