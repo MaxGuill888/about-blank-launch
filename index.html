@@ -559,6 +559,11 @@
     .acc-link { display: inline; width: auto; padding: 0; background: none; border: none; color: var(--accent); text-decoration: underline; font-size: 12px; font-weight: 400; }
     .acc-link:hover { background: none; filter: none; transform: none; }
     #accWho { font-size: 13px; margin-bottom: 10px; overflow-wrap: anywhere; }
+  
+    /* ======= IA : bouton "réessayer" et note de modèle ======= */
+    .ai-retry-btn { display: block; width: auto; margin-top: 10px; padding: 6px 12px; font-size: 12px; font-weight: 500; background: var(--item-bg); color: var(--text); border: 1px solid var(--card-border); border-radius: 8px; cursor: pointer; }
+    .ai-retry-btn:hover { border-color: var(--accent); filter: none; transform: none; }
+    .ai-model-note { margin-top: 8px; font-size: 11px; color: var(--muted); }
   </style>
 </head>
 <body>
@@ -829,7 +834,8 @@
         accLogin: "Se connecter", accRegister: "S'inscrire", accNoAccount: "Pas encore de compte ?", accHaveAccount: "Déjà un compte ?",
         accCreate: "Créer un compte", accSignIn: "Se connecter", accLogout: "Se déconnecter", accConnectedAs: "Connecté : {name}",
         accErrExists: "Email déjà utilisé.", accErrWeak: "Mot de passe trop court (6 caractères min).", accErrEmail: "Email invalide.",
-        accErrCreds: "Email ou mot de passe incorrect."
+        accErrCreds: "Email ou mot de passe incorrect.",
+        aiRetryOlder: "Réessayer avec un modèle antérieur", aiNoOlder: "Plus de modèle plus ancien disponible : essaie une autre IA (bouton à gauche)."
       },
       en: {
         title: "about:blank", titleSettings: "Settings", labelTheme: "Theme:", labelLang: "Language:", optSystem: "System", optDark: "Dark", optLight: "Light",
@@ -861,7 +867,8 @@
         accLogin: "Sign in", accRegister: "Sign up", accNoAccount: "No account yet?", accHaveAccount: "Already have an account?",
         accCreate: "Create an account", accSignIn: "Sign in", accLogout: "Sign out", accConnectedAs: "Signed in: {name}",
         accErrExists: "Email already in use.", accErrWeak: "Password too short (6 characters min).", accErrEmail: "Invalid email.",
-        accErrCreds: "Wrong email or password."
+        accErrCreds: "Wrong email or password.",
+        aiRetryOlder: "Retry with an older model", aiNoOlder: "No older model left: try another AI (button on the left)."
       }
     };
 
@@ -1463,20 +1470,28 @@
     let geminiChats = getStore('gemini_chats');
     let currentChatId = null;
 
-    const AI_PROVIDERS = { gemini: 'Gemini', groq: 'Groq', nvidia: 'NVIDIA' };
-    const AI_ORDER = ['gemini', 'groq', 'nvidia'];
+    const AI_PROVIDERS = { gemini: 'Gemini', groq: 'Groq', nvidia: 'NVIDIA', cloudflare: 'Cloudflare' };
+    const AI_ORDER = ['gemini', 'groq', 'nvidia', 'cloudflare'];
+    // Modèle choisi par IA : gardé en mémoire seulement (on revient au modèle récent en rafraîchissant la page)
+    const aiState = {}; // provider -> { override, latest, used, older }
+    const AI_RETRY_CODES = ['PROVIDER_BUSY', 'MODEL_GONE', 'PROVIDER_ERROR'];
 
     // Les clés API ne sont plus dans le site : le worker Cloudflare les garde en secret et appelle les IA
     async function callAI(provider, messages, system) {
       const token = getAuthToken();
       if (!token) throw Object.assign(new Error('Connexion requise'), { code: 'AUTH_REQUIRED' });
+      const st = aiState[provider] || (aiState[provider] = {});
       const res = await fetch(WORKER_URL + '/api/ai/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-        body: JSON.stringify({ provider, messages, system })
+        body: JSON.stringify({ provider, messages, system, model: st.override || undefined })
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw Object.assign(new Error(data.error || ('Erreur ' + res.status)), { code: data.code || '', status: res.status });
+      if (data.latest) st.latest = data.latest;
+      if (!res.ok) throw Object.assign(new Error(data.error || ('Erreur ' + res.status)), { code: data.code || '', status: res.status, older: data.older || [] });
+      st.used = data.model;
+      st.older = data.older || [];
+      if (st.override) st.override = data.model; // si le modèle choisi a été retiré, le worker en a pris un autre
       return data.text;
     }
     function aiErrorText(err, provider, t) {
@@ -1497,7 +1512,17 @@
     let currentAiProvider = localStorage.getItem('ai_provider') || 'gemini';
     if (!AI_PROVIDERS[currentAiProvider]) currentAiProvider = 'gemini';
 
-    function updateAiProviderBtn() { aiProviderBtn.textContent = AI_PROVIDERS[currentAiProvider]; }
+    // "Gemini" si on utilise le modèle récent, "Gemini: nom-du-modèle" si on a choisi un modèle antérieur
+    function aiOlderModel(p) { const st = aiState[p]; return st && st.override && st.override !== st.latest ? st.override : null; }
+    function updateAiProviderBtn() {
+      const m = aiOlderModel(currentAiProvider);
+      aiProviderBtn.textContent = AI_PROVIDERS[currentAiProvider] + (m ? ': ' + m.split('/').pop() : '');
+      aiProviderBtn.title = m || '';
+      aiProviderBtn.style.maxWidth = '200px';
+      aiProviderBtn.style.overflow = 'hidden';
+      aiProviderBtn.style.textOverflow = 'ellipsis';
+      aiProviderBtn.style.whiteSpace = 'nowrap';
+    }
 
     window.cycleAiProvider = function() {
       currentAiProvider = AI_ORDER[(AI_ORDER.indexOf(currentAiProvider) + 1) % AI_ORDER.length];
@@ -1536,7 +1561,7 @@ Voici les fonctionnalités de l'application :
 - Fond d'écran personnalisable : choisir une image locale ou la retirer
 - Thème : sombre, clair, ou système
 - Langue : français ou anglais
-- Chat IA : Gemini (Google), Groq (LLaMA) ou NVIDIA, sélectionnable via le bouton à gauche de la barre de message. Historique de conversations persistant. Nécessite d'être connecté (Réglages > Compte)
+- Chat IA : Gemini (Google), Groq (LLaMA), NVIDIA ou Cloudflare, sélectionnable via le bouton à gauche de la barre de message. Historique de conversations persistant, partagé entre les IA (on peut changer d'IA en cours de conversation). Nécessite d'être connecté (Réglages > Compte). Si une IA est saturée, un bouton « Réessayer avec un modèle antérieur » apparaît sous l'erreur ; le modèle choisi s'affiche à côté du nom de l'IA jusqu'au rafraîchissement de la page
 - Chat INFO (ce chat) : assistant dédié aux questions sur l'application, basé sur Groq
 - Messagerie : conversations privées et chat global via le serveur. Nécessite un compte (inscription/connexion dans Réglages)
 - App : galerie d'apps HTML (ajouter un fichier .html avec nom et icône optionnels), ouverture en plein écran dans la page, boutons − (réduire, l'app reste active), □ (fenêtre déplaçable et redimensionnable) et ✕ (fermer)
@@ -1687,6 +1712,57 @@ Réponds toujours en français sauf si l'utilisateur écrit en anglais.`;
       } catch(e) { console.error("Erreur sauvegarde :", e); }
     };
 
+    function showAnswer(aiDiv, raw, provider) {
+      const b64Raw = btoa(encodeURIComponent(raw));
+      aiDiv.innerHTML = `<div class="markdown-body">${marked.parse(raw)}</div>
+        <button class="save-note-btn" onclick="saveAsNote(this)" data-raw="${b64Raw}" title="Sauvegarder en note"><img src="https://static.thenounproject.com/png/3248069-200.png" alt="Note"></button>`;
+      aiDiv.classList.remove('typing');
+      const m = aiOlderModel(provider);
+      if (m) { const n = document.createElement('div'); n.className = 'ai-model-note'; n.textContent = m; aiDiv.appendChild(n); }
+    }
+
+    // Erreur : si c'est une saturation / un modèle retiré, un bouton propose de réessayer avec un modèle antérieur
+    function showError(aiDiv, err, provider, retry) {
+      const t = translations[getStore('app_lang', '"fr"')];
+      aiDiv.classList.remove('typing');
+      aiDiv.innerText = aiErrorText(err, provider, t);
+      if (!err || !AI_RETRY_CODES.includes(err.code)) return;
+      const hint = document.createElement('div');
+      if (err.older && err.older.length) {
+        const btn = document.createElement('button');
+        btn.type = 'button'; btn.className = 'ai-retry-btn';
+        btn.textContent = t.aiRetryOlder;
+        btn.title = err.older[0];
+        btn.onclick = () => {
+          const st = aiState[provider] || (aiState[provider] = {});
+          st.override = err.older[0];
+          updateAiProviderBtn();
+          retry();
+        };
+        aiDiv.appendChild(btn);
+      } else {
+        hint.className = 'ai-model-note';
+        hint.textContent = t.aiNoOlder;
+        aiDiv.appendChild(hint);
+      }
+    }
+
+    async function runAI(provider, getMessages, system, onAnswer, aiDiv) {
+      const t = translations[getStore('app_lang', '"fr"')];
+      aiDiv.classList.add('typing');
+      aiDiv.innerText = t.aiThinking;
+      try {
+        const raw = await callAI(provider, getMessages(), system);
+        onAnswer(raw);
+        showAnswer(aiDiv, raw, provider);
+      } catch (error) {
+        console.error(error);
+        showError(aiDiv, error, provider, () => runAI(provider, getMessages, system, onAnswer, aiDiv));
+      }
+      updateAiProviderBtn(); // le nom du modèle affiché suit ce que le worker a réellement utilisé
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+
     async function handleChat() {
       const text = aiInput.value.trim();
       if(!text) return;
@@ -1695,48 +1771,23 @@ Réponds toujours en français sauf si l'utilisateur écrit en anglais.`;
       if(welcome) welcome.remove();
       appendMsg(text, 'user-msg');
       aiInput.value = '';
-      const msgId = appendMsg(t.aiThinking, 'ai-msg');
-      const aiDiv = document.getElementById(msgId);
-      aiDiv.classList.add('typing');
 
-      const showAnswer = (raw) => {
-        const b64Raw = btoa(encodeURIComponent(raw));
-        aiDiv.innerHTML = `<div class="markdown-body">${marked.parse(raw)}</div>
-          <button class="save-note-btn" onclick="saveAsNote(this)" data-raw="${b64Raw}" title="Sauvegarder en note"><img src="https://static.thenounproject.com/png/3248069-200.png" alt="Note"></button>`;
-        aiDiv.classList.remove('typing');
-      };
-      const showError = (err, provider) => {
-        aiDiv.innerText = aiErrorText(err, provider, t);
-        aiDiv.classList.remove('typing');
-      };
-
+      let provider, system, getMessages, onAnswer;
       if(isInfoChat) {
         infoChatMessages.push({ role: 'user', text });
         localStorage.setItem('info_chat_messages', JSON.stringify(infoChatMessages));
-        try {
-          const messages = infoChatMessages.map(m => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.text }));
-          const aiRawText = await callAI('groq', messages, INFO_SYSTEM_PROMPT);
-          infoChatMessages.push({ role: 'ai', text: aiRawText });
-          localStorage.setItem('info_chat_messages', JSON.stringify(infoChatMessages));
-          showAnswer(aiRawText);
-        } catch(error) { showError(error, 'groq'); }
-        messagesDiv.scrollTop = messagesDiv.scrollHeight;
-        return;
+        provider = 'groq';
+        system = INFO_SYSTEM_PROMPT;
+        getMessages = () => infoChatMessages.map(m => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.text }));
+        onAnswer = raw => { infoChatMessages.push({ role: 'ai', text: raw }); localStorage.setItem('info_chat_messages', JSON.stringify(infoChatMessages)); };
+      } else {
+        provider = currentAiProvider;
+        saveMessageToChat('user', text);
+        getMessages = () => geminiChats.find(c => c.id === currentChatId).messages.map(m => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.text }));
+        onAnswer = raw => saveMessageToChat('ai', raw);
       }
-
-      const provider = currentAiProvider;
-      saveMessageToChat('user', text);
-      try {
-        const chat = geminiChats.find(c => c.id === currentChatId);
-        const messages = chat.messages.map(m => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.text }));
-        const aiRawText = await callAI(provider, messages);
-        saveMessageToChat('ai', aiRawText);
-        showAnswer(aiRawText);
-      } catch (error) {
-        console.error(error);
-        showError(error, provider);
-      }
-      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+      const msgId = appendMsg(t.aiThinking, 'ai-msg');
+      await runAI(provider, getMessages, system, onAnswer, document.getElementById(msgId));
     }
 
     function appendMsg(text, side) {
