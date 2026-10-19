@@ -224,7 +224,7 @@
           <h2>Télécharger le fichier</h2>
           <p>Enregistrez about.html sur votre appareil pour pouvoir le lancer directement.</p>
         </div>
-        <a class="action primary" href="about.html" download="about.html">
+        <a class="action primary" id="download-about" href="about.html" download="about.html">
           Télécharger
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
         </a>
@@ -240,6 +240,7 @@
             <span class="or">ou</span>
             <kbd>⌘</kbd><span class="or">+</span><kbd>D</kbd>
           </div>
+          <button class="action" id="confirm-bookmark" type="button">J’ai ajouté le favori</button>
         </div>
       </article>
     </section>
@@ -271,7 +272,33 @@
       const progressValue = document.getElementById('progress-value');
       const backButton = document.getElementById('step-back');
       const nextButton = document.getElementById('step-next');
+      const downloadLink = document.getElementById('download-about');
+      const bookmarkButton = document.getElementById('confirm-bookmark');
       let currentStep = 0;
+      let notificationStepDone = false;
+      let downloadStepDone = localStorage.getItem('launch_about_download_started') === 'true';
+      let bookmarkStepDone = localStorage.getItem('launch_about_bookmarked') === 'true';
+
+      function updateNextButton() {
+        const completed = [notificationStepDone, downloadStepDone, bookmarkStepDone][currentStep];
+        if (currentStep === steps.length - 1) {
+          nextButton.textContent = completed ? 'Terminer' : 'Passer';
+          return;
+        }
+        nextButton.textContent = completed ? 'Étape suivante' : 'Passer';
+      }
+
+      async function refreshNotificationStep() {
+        if (!('Notification' in window) || Notification.permission !== 'granted' || !('serviceWorker' in navigator)) return;
+        try {
+          const registration = await navigator.serviceWorker.getRegistration(new URL('sw.js', location.href));
+          const subscription = registration && await registration.pushManager.getSubscription();
+          notificationStepDone = Boolean(subscription && usesCurrentVapidKey(subscription));
+          if (currentStep === 0) updateNextButton();
+        } catch (error) {
+          notificationStepDone = false;
+        }
+      }
 
       function showStep(index) {
         currentStep = index;
@@ -282,7 +309,7 @@
         stepCount.textContent = `ÉTAPE ${String(index + 1).padStart(2, '0')} / 03`;
         progressValue.style.width = `${((index + 1) / steps.length) * 100}%`;
         backButton.hidden = index === 0;
-        nextButton.textContent = index === 0 ? 'Passer' : index === steps.length - 1 ? 'Terminer' : 'Étape suivante';
+        updateNextButton();
         nextButton.disabled = false;
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
@@ -297,6 +324,20 @@
       });
 
       backButton.addEventListener('click', () => showStep(Math.max(0, currentStep - 1)));
+
+      downloadLink.addEventListener('click', () => {
+        downloadStepDone = true;
+        localStorage.setItem('launch_about_download_started', 'true');
+        if (currentStep === 1) updateNextButton();
+      });
+
+      bookmarkButton.addEventListener('click', () => {
+        bookmarkStepDone = true;
+        localStorage.setItem('launch_about_bookmarked', 'true');
+        bookmarkButton.textContent = 'Favori confirmé';
+        bookmarkButton.disabled = true;
+        if (currentStep === 2) updateNextButton();
+      });
 
       function refreshLoginState() {
         const connected = Boolean(localStorage.getItem('cf_jwt'));
@@ -411,6 +452,8 @@
         status.textContent = 'Activation en cours…';
         try {
           await enableNotifications();
+          notificationStepDone = true;
+          updateNextButton();
           status.textContent = 'Notifications activées pour cette page et associées à votre compte.';
         } catch (error) {
           status.textContent = error.message;
@@ -421,6 +464,11 @@
 
       refreshLoginState();
       showStep(0);
+      refreshNotificationStep();
+      if (bookmarkStepDone) {
+        bookmarkButton.textContent = 'Favori confirmé';
+        bookmarkButton.disabled = true;
+      }
     })();
   </script>
 </body>
