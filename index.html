@@ -19,6 +19,7 @@
     }
 
     * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
 
     body {
       min-height: 100vh;
@@ -85,6 +86,23 @@
     .step-copy { min-width: 0; }
     h2 { margin: 1px 0 6px; font-size: 15px; line-height: 1.35; }
     .step-copy p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.55; }
+    .auth-form { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; margin-top: 12px; }
+    .auth-form input {
+      min-width: 0;
+      width: 100%;
+      height: 38px;
+      padding: 0 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      outline: none;
+      background: #080808;
+      color: var(--text);
+      font: inherit;
+      font-size: 12px;
+    }
+    .auth-form input:focus { border-color: #888; }
+    .auth-form .action { grid-column: 1 / -1; justify-self: start; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 
     .action {
       min-height: 38px;
@@ -130,6 +148,7 @@
       .step-number { width: 34px; height: 34px; }
       .step .action { grid-column: 2; justify-self: start; margin-top: 2px; }
       .push-status { grid-column: 2; }
+      .auth-status { grid-column: 2; }
       footer { flex-direction: column; }
     }
     @media (prefers-reduced-motion: reduce) {
@@ -155,12 +174,20 @@
         <span class="step-number" aria-hidden="true">01</span>
         <div class="step-copy">
           <h2>Activer les notifications</h2>
-          <p>Autorisez les notifications et créez l’abonnement push depuis cette page GitHub. Connectez-vous d’abord à votre compte about:blank sur cet appareil.</p>
+          <p>Connectez-vous ici pour associer les notifications à votre compte. L’autorisation et l’abonnement push seront ensuite activés depuis cette page.</p>
+          <form class="auth-form" id="login-form">
+            <label class="sr-only" for="login-email">Adresse e-mail</label>
+            <input id="login-email" type="email" autocomplete="username" placeholder="Adresse e-mail" required>
+            <label class="sr-only" for="login-password">Mot de passe</label>
+            <input id="login-password" type="password" autocomplete="current-password" placeholder="Mot de passe" required>
+            <button class="action" id="login-button" type="submit">Se connecter</button>
+          </form>
         </div>
-        <button class="action primary" id="enable-notifications" type="button">
+        <button class="action primary" id="enable-notifications" type="button" hidden>
           Activer ici
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg>
         </button>
+        <p class="auth-status push-status" id="auth-status" role="status" aria-live="polite"></p>
         <p class="push-status" id="push-status" role="status" aria-live="polite"></p>
       </article>
 
@@ -201,7 +228,50 @@
       const workerUrl = 'https://about-blank-chat.elix-hardy9.workers.dev';
       const vapidPublicKey = 'BNbPMoCwKI6JpXHCYov4BzrVM04sXPP82WHtd6sofV5JDnjrr9_T9OI7DFUVZYo1Kx9tLwkUtvOtS_mfeiZ6hCU';
       const button = document.getElementById('enable-notifications');
+      const loginForm = document.getElementById('login-form');
+      const loginButton = document.getElementById('login-button');
+      const authStatus = document.getElementById('auth-status');
       const status = document.getElementById('push-status');
+
+      function refreshLoginState() {
+        const connected = Boolean(localStorage.getItem('cf_jwt'));
+        loginForm.hidden = connected;
+        button.hidden = !connected;
+        authStatus.textContent = connected ? 'Compte connecté sur cet appareil.' : '';
+      }
+
+      loginForm.addEventListener('submit', async event => {
+        event.preventDefault();
+        loginButton.disabled = true;
+        authStatus.textContent = 'Connexion en cours…';
+        try {
+          const response = await fetch(`${workerUrl}/api/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: document.getElementById('login-email').value.trim().toLowerCase(),
+              password: document.getElementById('login-password').value.trim()
+            })
+          });
+          const result = await response.json().catch(() => ({}));
+          if (!response.ok) {
+            const errors = {
+              INVALID_CREDENTIALS: 'Adresse e-mail ou mot de passe incorrect.',
+              INVALID_EMAIL: 'Adresse e-mail invalide.'
+            };
+            throw new Error(errors[result.code] || result.error || 'Connexion impossible.');
+          }
+          if (!result.token) throw new Error('Le serveur n’a pas renvoyé de session valide.');
+          localStorage.setItem('cf_jwt', result.token);
+          if (result.user) localStorage.setItem('msg_current_user', JSON.stringify(result.user));
+          refreshLoginState();
+          authStatus.textContent = 'Connexion réussie. Cliquez sur « Activer ici » pour autoriser les notifications.';
+        } catch (error) {
+          authStatus.textContent = error.message;
+        } finally {
+          loginButton.disabled = false;
+        }
+      });
 
       function decodeVapidKey(value) {
         const base64 = value.replace(/-/g, '+').replace(/_/g, '/');
@@ -219,7 +289,7 @@
 
       async function registerSubscription(subscription) {
         const token = localStorage.getItem('cf_jwt');
-        if (!token) throw new Error('Connectez-vous d’abord via « Accéder à la page en ligne » en bas, puis revenez ici.');
+        if (!token) throw new Error('Session absente. Connectez-vous dans le formulaire de cette page, puis réessayez.');
 
         const serialized = subscription.toJSON();
         const response = await fetch(`${workerUrl}/api/push/subscribe`, {
@@ -237,9 +307,6 @@
       async function enableNotifications() {
         if (!window.isSecureContext || !('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
           throw new Error('Les notifications push ne sont pas disponibles dans ce navigateur ou sur cette adresse.');
-        }
-        if (!localStorage.getItem('cf_jwt')) {
-          throw new Error('Connectez-vous d’abord via « Accéder à la page en ligne » en bas, puis revenez ici.');
         }
         if (Notification.permission === 'denied') {
           throw new Error('Les notifications sont bloquées pour ce site. Autorisez-les dans les paramètres du navigateur, puis réessayez.');
@@ -286,6 +353,8 @@
           button.disabled = false;
         }
       });
+
+      refreshLoginState();
     })();
   </script>
 </body>
