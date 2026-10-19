@@ -103,11 +103,15 @@
       text-decoration: none;
       white-space: nowrap;
       transition: background .18s, border-color .18s, transform .18s;
+      cursor: pointer;
     }
     .action:hover { background: #242424; border-color: #666; transform: translateY(-1px); }
     .action.primary { background: var(--accent); border-color: var(--accent); color: #000; }
     .action.primary:hover { background: #d8dfe6; }
+    .action:disabled { cursor: wait; opacity: .65; transform: none; }
     .action svg { width: 14px; height: 14px; flex: none; }
+    .push-status { grid-column: 2 / -1; margin: -3px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+    .push-status:empty { display: none; }
 
     .keys { display: inline-flex; align-items: center; gap: 5px; margin-top: 12px; }
     kbd { min-width: 28px; padding: 4px 7px; border: 1px solid var(--border); border-radius: 5px; background: #080808; color: var(--text); font: 600 11px/1.2 Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; text-align: center; }
@@ -125,6 +129,7 @@
       .step { grid-template-columns: 36px minmax(0, 1fr); gap: 12px; padding: 16px; }
       .step-number { width: 34px; height: 34px; }
       .step .action { grid-column: 2; justify-self: start; margin-top: 2px; }
+      .push-status { grid-column: 2; }
       footer { flex-direction: column; }
     }
     @media (prefers-reduced-motion: reduce) {
@@ -141,7 +146,7 @@
 
     <header>
       <p class="eyebrow">Mise en route</p>
-      <h1>Votre page, prête à ouvrir.</h1>
+      <h1>About - Blank, prêt à ouvrir.</h1>
       <p class="intro">Suivez ces trois étapes pour recevoir les messages et garder about:blank à portée de main.</p>
     </header>
 
@@ -150,12 +155,13 @@
         <span class="step-number" aria-hidden="true">01</span>
         <div class="step-copy">
           <h2>Activer les notifications</h2>
-          <p>Ouvrez about:blank, connectez-vous, puis dans la Messagerie ouvrez la cloche et choisissez « Activer sur cet appareil ».</p>
+          <p>Autorisez les notifications et créez l’abonnement push depuis cette page GitHub. Connectez-vous d’abord à votre compte about:blank sur cet appareil.</p>
         </div>
-        <a class="action" href="about.html" target="_blank" rel="noopener">
-          Ouvrir about:blank
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14 3h7v7M10 14 21 3"/><path d="M19 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h6"/></svg>
-        </a>
+        <button class="action primary" id="enable-notifications" type="button">
+          Activer ici
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg>
+        </button>
+        <p class="push-status" id="push-status" role="status" aria-live="polite"></p>
       </article>
 
       <article class="step">
@@ -190,5 +196,97 @@
       <a href="about.html">Accéder à la page en ligne</a>
     </footer>
   </main>
+  <script>
+    (() => {
+      const workerUrl = 'https://about-blank-chat.elix-hardy9.workers.dev';
+      const vapidPublicKey = 'BNbPMoCwKI6JpXHCYov4BzrVM04sXPP82WHtd6sofV5JDnjrr9_T9OI7DFUVZYo1Kx9tLwkUtvOtS_mfeiZ6hCU';
+      const button = document.getElementById('enable-notifications');
+      const status = document.getElementById('push-status');
+
+      function decodeVapidKey(value) {
+        const base64 = value.replace(/-/g, '+').replace(/_/g, '/');
+        const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=');
+        return Uint8Array.from(atob(padded), character => character.charCodeAt(0));
+      }
+
+      function usesCurrentVapidKey(subscription) {
+        const currentKey = subscription.options && subscription.options.applicationServerKey;
+        if (!currentKey) return true;
+        const actual = new Uint8Array(currentKey);
+        const expected = decodeVapidKey(vapidPublicKey);
+        return actual.length === expected.length && actual.every((byte, index) => byte === expected[index]);
+      }
+
+      async function registerSubscription(subscription) {
+        const token = localStorage.getItem('cf_jwt');
+        if (!token) throw new Error('Connectez-vous d’abord via « Accéder à la page en ligne » en bas, puis revenez ici.');
+
+        const serialized = subscription.toJSON();
+        const response = await fetch(`${workerUrl}/api/push/subscribe`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({ endpoint: serialized.endpoint, keys: serialized.keys })
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || 'Impossible d’associer les notifications à votre compte.');
+      }
+
+      async function enableNotifications() {
+        if (!window.isSecureContext || !('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+          throw new Error('Les notifications push ne sont pas disponibles dans ce navigateur ou sur cette adresse.');
+        }
+        if (!localStorage.getItem('cf_jwt')) {
+          throw new Error('Connectez-vous d’abord via « Accéder à la page en ligne » en bas, puis revenez ici.');
+        }
+        if (Notification.permission === 'denied') {
+          throw new Error('Les notifications sont bloquées pour ce site. Autorisez-les dans les paramètres du navigateur, puis réessayez.');
+        }
+        if (Notification.permission === 'default' && await Notification.requestPermission() !== 'granted') {
+          throw new Error('Autorisation des notifications refusée.');
+        }
+
+        const swUrl = new URL('sw.js', location.href);
+        const registration = await navigator.serviceWorker.register(swUrl);
+        await navigator.serviceWorker.ready;
+
+        let subscription = await registration.pushManager.getSubscription();
+        let createdHere = false;
+        if (subscription && !usesCurrentVapidKey(subscription)) {
+          await subscription.unsubscribe();
+          subscription = null;
+        }
+        if (!subscription) {
+          subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: decodeVapidKey(vapidPublicKey)
+          });
+          createdHere = true;
+        }
+
+        try {
+          await registerSubscription(subscription);
+        } catch (error) {
+          if (createdHere) await subscription.unsubscribe().catch(() => {});
+          throw error;
+        }
+      }
+
+      button.addEventListener('click', async () => {
+        button.disabled = true;
+        status.textContent = 'Activation en cours…';
+        try {
+          await enableNotifications();
+          status.textContent = 'Notifications activées pour cette page et associées à votre compte.';
+        } catch (error) {
+          status.textContent = error.message;
+        } finally {
+          button.disabled = false;
+        }
+      });
+    })();
+  </script>
 </body>
 </html>
