@@ -150,6 +150,16 @@
     .step-navigation .action { min-width: 40px; }
     .step-navigation .back-action { padding: 0 12px; }
     .step-navigation .back-action svg { transform: rotate(180deg); }
+    .completed-view { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .completed-panel { padding: 20px; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,.2); }
+    .completed-panel h2 { font-size: 16px; }
+    .completed-panel > p { margin: 0 0 14px; color: var(--muted); font-size: 13px; line-height: 1.55; }
+    .completed-panel > p a { color: var(--text); }
+    .preference-list { display: grid; gap: 8px; margin-top: 16px; }
+    .preference-row { display: flex; align-items: center; gap: 10px; min-height: 42px; padding: 0 11px; border: 1px solid var(--border); border-radius: 8px; background: var(--panel-raised); font-size: 13px; cursor: pointer; }
+    .preference-row input { width: 16px; height: 16px; margin: 0; accent-color: var(--text); }
+    .manage-status { min-height: 18px; margin: 12px 0 0 !important; color: var(--muted); font-size: 12px !important; }
+    .completed-panel .action { margin-top: 4px; }
 
     .keys { display: inline-flex; align-items: center; gap: 5px; margin-top: 12px; }
     kbd { min-width: 28px; padding: 4px 7px; border: 1px solid var(--border); border-radius: 5px; background: #080808; color: var(--text); font: 600 11px/1.2 Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; text-align: center; }
@@ -171,6 +181,7 @@
       .auth-status { grid-column: 2; }
       .auth-form .action { grid-column: 1 / -1; }
       .step-navigation { right: 14px; bottom: 14px; }
+      .completed-view { grid-template-columns: 1fr; }
       footer { flex-direction: column; }
     }
     @media (prefers-reduced-motion: reduce) {
@@ -187,8 +198,8 @@
 
     <header>
       <p class="eyebrow">Mise en route</p>
-      <h1>About - Blank, prêt à ouvrir.</h1>
-      <p class="intro">Suivez ces trois étapes pour recevoir les messages et garder about:blank à portée de main.</p>
+      <h1 id="page-title">About - Blank, prêt à ouvrir.</h1>
+      <p class="intro" id="page-intro">Suivez ces trois étapes pour recevoir les messages et garder about:blank à portée de main.</p>
     </header>
 
     <div class="step-progress" aria-live="polite">
@@ -245,6 +256,25 @@
       </article>
     </section>
 
+    <section class="completed-view" id="completed-view" aria-label="Gestion de about:blank" hidden>
+      <article class="completed-panel">
+        <h2>Notifications</h2>
+        <p id="managed-notification-status">État des notifications en cours de vérification…</p>
+        <button class="action primary" id="manage-notifications" type="button">Désactiver les notifications</button>
+        <div class="preference-list" aria-label="Types de notifications">
+          <label class="preference-row"><input id="pref-global" type="checkbox"><span>Chat global</span></label>
+          <label class="preference-row"><input id="pref-conv" type="checkbox"><span>Conversations privées</span></label>
+        </div>
+        <p class="manage-status" id="prefs-status" role="status" aria-live="polite"></p>
+      </article>
+      <article class="completed-panel">
+        <h2>Fichier about.html</h2>
+        <p>Téléchargez à nouveau la page about:blank sur cet appareil.</p>
+        <a class="action primary" href="about.html" download="about.html">Retélécharger about.html</a>
+        <p class="manage-status">La session du lanceur n’est pas copiée dans le fichier local. Pour garder la connexion, utilisez la <a href="about.html">version web</a>.</p>
+      </article>
+    </section>
+
     <nav class="step-navigation" aria-label="Navigation des étapes">
       <button class="action back-action" id="step-back" type="button" aria-label="Étape précédente" hidden>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
@@ -252,8 +282,8 @@
       <button class="action primary" id="step-next" type="button">Passer</button>
     </nav>
 
-    <p class="note">Les notifications nécessitent l’autorisation du navigateur et une connexion à votre compte. Si elles sont bloquées, autorisez-les dans les paramètres du site.</p>
-    <footer>
+    <p class="note" id="setup-note">Les notifications nécessitent l’autorisation du navigateur et une connexion à votre compte. Si elles sont bloquées, autorisez-les dans les paramètres du site.</p>
+    <footer id="site-footer">
       <span>about:blank · Lanceur</span>
       <a href="about.html">Accéder à la page en ligne</a>
     </footer>
@@ -267,25 +297,64 @@
       const loginButton = document.getElementById('login-button');
       const authStatus = document.getElementById('auth-status');
       const status = document.getElementById('push-status');
-      const steps = [...document.querySelectorAll('.step[data-step]')];
+      const stepContainer = document.querySelector('.steps');
+      const originalSteps = [...document.querySelectorAll('.step[data-step]')];
+      const steps = [originalSteps[1], originalSteps[2], originalSteps[0]];
+      steps.forEach((step, index) => {
+        step.dataset.step = String(index);
+        step.querySelector('.step-number').textContent = String(index + 1).padStart(2, '0');
+      });
+      stepContainer.replaceChildren(...steps);
       const stepCount = document.getElementById('step-count');
       const progressValue = document.getElementById('progress-value');
       const backButton = document.getElementById('step-back');
       const nextButton = document.getElementById('step-next');
       const downloadLink = document.getElementById('download-about');
       const bookmarkButton = document.getElementById('confirm-bookmark');
+      const completedView = document.getElementById('completed-view');
+      const pageTitle = document.getElementById('page-title');
+      const pageIntro = document.getElementById('page-intro');
+      const stepProgress = document.querySelector('.step-progress');
+      const setupNote = document.getElementById('setup-note');
+      const siteFooter = document.getElementById('site-footer');
+      const managedNotificationStatus = document.getElementById('managed-notification-status');
+      const manageNotificationsButton = document.getElementById('manage-notifications');
+      const globalPreference = document.getElementById('pref-global');
+      const conversationPreference = document.getElementById('pref-conv');
+      const preferencesStatus = document.getElementById('prefs-status');
       let currentStep = 0;
       let notificationStepDone = false;
       let downloadStepDone = localStorage.getItem('launch_about_download_started') === 'true';
       let bookmarkStepDone = localStorage.getItem('launch_about_bookmarked') === 'true';
+      let dashboardVisible = false;
 
       function updateNextButton() {
-        const completed = [notificationStepDone, downloadStepDone, bookmarkStepDone][currentStep];
-        if (currentStep === steps.length - 1) {
-          nextButton.textContent = completed ? 'Terminer' : 'Passer';
+        const completed = [downloadStepDone, bookmarkStepDone, notificationStepDone][currentStep];
+        if (currentStep === steps.length - 1 && completed) {
+          nextButton.textContent = 'Terminer';
           return;
         }
         nextButton.textContent = completed ? 'Étape suivante' : 'Passer';
+      }
+
+      function allStepsDone() {
+        return downloadStepDone && bookmarkStepDone && notificationStepDone;
+      }
+
+      function showCompletedView(force = false) {
+        if (dashboardVisible || (!force && !allStepsDone())) return;
+        dashboardVisible = true;
+        localStorage.setItem('launch_setup_completed', 'true');
+        stepProgress.hidden = true;
+        stepContainer.hidden = true;
+        completedView.hidden = false;
+        document.querySelector('.step-navigation').hidden = true;
+        setupNote.hidden = true;
+        siteFooter.hidden = true;
+        pageTitle.textContent = 'Tout est prêt.';
+        pageIntro.textContent = 'Gérez vos notifications et votre fichier about.html depuis cette page.';
+        loadNotificationPreferences();
+        refreshManagedNotificationStatus();
       }
 
       async function refreshNotificationStep() {
@@ -294,7 +363,8 @@
           const registration = await navigator.serviceWorker.getRegistration(new URL('sw.js', location.href));
           const subscription = registration && await registration.pushManager.getSubscription();
           notificationStepDone = Boolean(subscription && usesCurrentVapidKey(subscription));
-          if (currentStep === 0) updateNextButton();
+          if (currentStep === 2) updateNextButton();
+          showCompletedView();
         } catch (error) {
           notificationStepDone = false;
         }
@@ -319,8 +389,8 @@
           showStep(currentStep + 1);
           return;
         }
-        nextButton.textContent = 'Terminé';
-        nextButton.disabled = true;
+        if (allStepsDone()) showCompletedView();
+        else status.textContent = 'Active les notifications pour terminer la mise en route.';
       });
 
       backButton.addEventListener('click', () => showStep(Math.max(0, currentStep - 1)));
@@ -328,7 +398,8 @@
       downloadLink.addEventListener('click', () => {
         downloadStepDone = true;
         localStorage.setItem('launch_about_download_started', 'true');
-        if (currentStep === 1) updateNextButton();
+        if (currentStep === 0) updateNextButton();
+        showCompletedView();
       });
 
       bookmarkButton.addEventListener('click', () => {
@@ -336,7 +407,8 @@
         localStorage.setItem('launch_about_bookmarked', 'true');
         bookmarkButton.textContent = 'Favori confirmé';
         bookmarkButton.disabled = true;
-        if (currentStep === 2) updateNextButton();
+        if (currentStep === 1) updateNextButton();
+        showCompletedView();
       });
 
       function refreshLoginState() {
@@ -393,21 +465,113 @@
         return actual.length === expected.length && actual.every((byte, index) => byte === expected[index]);
       }
 
+      async function pushApi(path, options = {}) {
+        const token = localStorage.getItem('cf_jwt');
+        if (!token) throw new Error('Session expirée. Reconnecte-toi depuis le lanceur.');
+        const response = await fetch(`${workerUrl}${path}`, {
+          ...options,
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+            ...(options.headers || {})
+          }
+        });
+        if (response.status === 204) return {};
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || 'Erreur lors de la gestion des notifications.');
+        return result;
+      }
+
+      async function loadNotificationPreferences() {
+        globalPreference.disabled = true;
+        conversationPreference.disabled = true;
+        preferencesStatus.textContent = 'Chargement des préférences…';
+        try {
+          const preferences = await pushApi('/api/push/prefs');
+          globalPreference.checked = Boolean(preferences.global);
+          conversationPreference.checked = Boolean(preferences.conv);
+          globalPreference.disabled = false;
+          conversationPreference.disabled = false;
+          preferencesStatus.textContent = '';
+        } catch (error) {
+          preferencesStatus.textContent = error.message;
+        }
+      }
+
+      async function saveNotificationPreference(key, input) {
+        const value = input.checked;
+        input.disabled = true;
+        preferencesStatus.textContent = 'Enregistrement…';
+        try {
+          await pushApi('/api/push/prefs', {
+            method: 'PATCH',
+            body: JSON.stringify({ [key]: value ? 1 : 0 })
+          });
+          preferencesStatus.textContent = 'Préférences enregistrées.';
+        } catch (error) {
+          input.checked = !value;
+          preferencesStatus.textContent = error.message;
+        } finally {
+          input.disabled = false;
+        }
+      }
+
+      async function refreshManagedNotificationStatus() {
+        let active = false;
+        try {
+          const registration = await navigator.serviceWorker.getRegistration(new URL('sw.js', location.href));
+          const subscription = registration && await registration.pushManager.getSubscription();
+          active = Boolean(subscription && usesCurrentVapidKey(subscription));
+        } catch (error) {
+          managedNotificationStatus.textContent = 'Impossible de vérifier l’état des notifications.';
+        }
+        manageNotificationsButton.textContent = active ? 'Désactiver les notifications' : 'Activer les notifications';
+        if (active) managedNotificationStatus.textContent = 'Notifications activées sur cet appareil.';
+        else if (Notification.permission === 'denied') managedNotificationStatus.textContent = 'Notifications bloquées dans les paramètres du navigateur.';
+        else managedNotificationStatus.textContent = 'Notifications désactivées sur cet appareil.';
+        return active;
+      }
+
+      async function toggleManagedNotifications() {
+        manageNotificationsButton.disabled = true;
+        try {
+          const active = await refreshManagedNotificationStatus();
+          if (active) {
+            const registration = await navigator.serviceWorker.getRegistration(new URL('sw.js', location.href));
+            const subscription = registration && await registration.pushManager.getSubscription();
+            if (subscription) {
+              await pushApi('/api/push/unsubscribe', {
+                method: 'POST',
+                body: JSON.stringify({ endpoint: subscription.endpoint })
+              });
+              await subscription.unsubscribe();
+            }
+            managedNotificationStatus.textContent = 'Notifications désactivées sur cet appareil.';
+          } else {
+            await enableNotifications();
+            managedNotificationStatus.textContent = 'Notifications activées sur cet appareil.';
+          }
+          await refreshManagedNotificationStatus();
+        } catch (error) {
+          managedNotificationStatus.textContent = error.message;
+        } finally {
+          manageNotificationsButton.disabled = false;
+        }
+      }
+
+      globalPreference.addEventListener('change', () => saveNotificationPreference('global', globalPreference));
+      conversationPreference.addEventListener('change', () => saveNotificationPreference('conv', conversationPreference));
+      manageNotificationsButton.addEventListener('click', toggleManagedNotifications);
+
       async function registerSubscription(subscription) {
         const token = localStorage.getItem('cf_jwt');
         if (!token) throw new Error('Session absente. Connectez-vous dans le formulaire de cette page, puis réessayez.');
 
         const serialized = subscription.toJSON();
-        const response = await fetch(`${workerUrl}/api/push/subscribe`, {
+        await pushApi('/api/push/subscribe', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`
-          },
           body: JSON.stringify({ endpoint: serialized.endpoint, keys: serialized.keys })
         });
-        const result = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(result.error || 'Impossible d’associer les notifications à votre compte.');
       }
 
       async function enableNotifications() {
@@ -455,6 +619,7 @@
           notificationStepDone = true;
           updateNextButton();
           status.textContent = 'Notifications activées pour cette page et associées à votre compte.';
+          showCompletedView();
         } catch (error) {
           status.textContent = error.message;
         } finally {
@@ -463,7 +628,11 @@
       });
 
       refreshLoginState();
-      showStep(0);
+      if (localStorage.getItem('launch_setup_completed') === 'true') {
+        showCompletedView(true);
+      } else {
+        showStep(0);
+      }
       refreshNotificationStep();
       if (bookmarkStepDone) {
         bookmarkButton.textContent = 'Favori confirmé';
