@@ -24,7 +24,7 @@
     body {
       min-height: 100vh;
       margin: 0;
-      padding: 32px 20px;
+      padding: 32px 20px 100px;
       display: grid;
       place-items: center;
       color: var(--text);
@@ -56,6 +56,9 @@
     h1 { margin: 0; font-size: 38px; line-height: 1.08; font-weight: 650; }
     .intro { max-width: 520px; margin: 13px 0 0; color: var(--muted); font-size: 15px; line-height: 1.6; }
 
+    .step-progress { display: flex; align-items: center; gap: 13px; margin: 0 0 14px; color: var(--muted); font-size: 10px; font-weight: 700; }
+    .progress-track { height: 2px; flex: 1; overflow: hidden; background: var(--border); }
+    .progress-value { display: block; width: 33.333%; height: 100%; background: var(--text); transition: width .25s ease; }
     .steps { display: grid; gap: 10px; }
     .step {
       display: grid;
@@ -130,6 +133,23 @@
     .action svg { width: 14px; height: 14px; flex: none; }
     .push-status { grid-column: 2 / -1; margin: -3px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
     .push-status:empty { display: none; }
+    .step-navigation {
+      position: fixed;
+      right: max(20px, calc((100vw - 680px) / 2));
+      bottom: 20px;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: rgba(18,18,18,.96);
+      box-shadow: 0 8px 28px rgba(0,0,0,.45);
+    }
+    .step-navigation .action { min-width: 40px; }
+    .step-navigation .back-action { padding: 0 12px; }
+    .step-navigation .back-action svg { transform: rotate(180deg); }
 
     .keys { display: inline-flex; align-items: center; gap: 5px; margin-top: 12px; }
     kbd { min-width: 28px; padding: 4px 7px; border: 1px solid var(--border); border-radius: 5px; background: #080808; color: var(--text); font: 600 11px/1.2 Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; text-align: center; }
@@ -149,6 +169,8 @@
       .step .action { grid-column: 2; justify-self: start; margin-top: 2px; }
       .push-status { grid-column: 2; }
       .auth-status { grid-column: 2; }
+      .auth-form .action { grid-column: 1 / -1; }
+      .step-navigation { right: 14px; bottom: 14px; }
       footer { flex-direction: column; }
     }
     @media (prefers-reduced-motion: reduce) {
@@ -169,8 +191,13 @@
       <p class="intro">Suivez ces trois étapes pour recevoir les messages et garder about:blank à portée de main.</p>
     </header>
 
+    <div class="step-progress" aria-live="polite">
+      <span id="step-count">ÉTAPE 01 / 03</span>
+      <span class="progress-track" aria-hidden="true"><span class="progress-value" id="progress-value"></span></span>
+    </div>
+
     <section class="steps" aria-label="Étapes de lancement">
-      <article class="step">
+      <article class="step" data-step="0">
         <span class="step-number" aria-hidden="true">01</span>
         <div class="step-copy">
           <h2>Activer les notifications</h2>
@@ -191,7 +218,7 @@
         <p class="push-status" id="push-status" role="status" aria-live="polite"></p>
       </article>
 
-      <article class="step">
+      <article class="step" data-step="1" hidden>
         <span class="step-number" aria-hidden="true">02</span>
         <div class="step-copy">
           <h2>Télécharger le fichier</h2>
@@ -203,7 +230,7 @@
         </a>
       </article>
 
-      <article class="step">
+      <article class="step" data-step="2" hidden>
         <span class="step-number" aria-hidden="true">03</span>
         <div class="step-copy">
           <h2>Mettre le fichier en favori</h2>
@@ -216,6 +243,13 @@
         </div>
       </article>
     </section>
+
+    <nav class="step-navigation" aria-label="Navigation des étapes">
+      <button class="action back-action" id="step-back" type="button" aria-label="Étape précédente" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </button>
+      <button class="action primary" id="step-next" type="button">Passer</button>
+    </nav>
 
     <p class="note">Les notifications nécessitent l’autorisation du navigateur et une connexion à votre compte. Si elles sont bloquées, autorisez-les dans les paramètres du site.</p>
     <footer>
@@ -232,6 +266,37 @@
       const loginButton = document.getElementById('login-button');
       const authStatus = document.getElementById('auth-status');
       const status = document.getElementById('push-status');
+      const steps = [...document.querySelectorAll('.step[data-step]')];
+      const stepCount = document.getElementById('step-count');
+      const progressValue = document.getElementById('progress-value');
+      const backButton = document.getElementById('step-back');
+      const nextButton = document.getElementById('step-next');
+      let currentStep = 0;
+
+      function showStep(index) {
+        currentStep = index;
+        steps.forEach((step, stepIndex) => {
+          step.hidden = stepIndex !== index;
+          step.setAttribute('aria-hidden', String(stepIndex !== index));
+        });
+        stepCount.textContent = `ÉTAPE ${String(index + 1).padStart(2, '0')} / 03`;
+        progressValue.style.width = `${((index + 1) / steps.length) * 100}%`;
+        backButton.hidden = index === 0;
+        nextButton.textContent = index === 0 ? 'Passer' : index === steps.length - 1 ? 'Terminer' : 'Étape suivante';
+        nextButton.disabled = false;
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+
+      nextButton.addEventListener('click', () => {
+        if (currentStep < steps.length - 1) {
+          showStep(currentStep + 1);
+          return;
+        }
+        nextButton.textContent = 'Terminé';
+        nextButton.disabled = true;
+      });
+
+      backButton.addEventListener('click', () => showStep(Math.max(0, currentStep - 1)));
 
       function refreshLoginState() {
         const connected = Boolean(localStorage.getItem('cf_jwt'));
@@ -355,6 +420,7 @@
       });
 
       refreshLoginState();
+      showStep(0);
     })();
   </script>
 </body>
